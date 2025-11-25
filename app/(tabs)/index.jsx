@@ -5,7 +5,6 @@ import {
 import Constants from 'expo-constants';
 import { Audio } from 'expo-av';
 
-// --- 🔧 CONFIGURATION ---
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const SHIP_SIZE = 60;
@@ -15,11 +14,9 @@ const CHICKEN_SIZE = 50;
 const BOSS_SIZE = 140;
 const POWERUP_SIZE = 45;
 
-// --- 🎵 AUDIO URLS (Reliable Google Links) ---
 const MUSIC_URL = 'https://codeskulptor-demos.commondatastorage.googleapis.com/GalaxyInvaders/theme_01.mp3';
 const SHOOT_URL = 'https://codeskulptor-demos.commondatastorage.googleapis.com/GalaxyInvaders/bonus.mp3';
 
-// --- 🎨 ASSETS ---
 const getShipSprite = (id) => `https://robohash.org/${id}.png?set=set3&size=${SHIP_SIZE}x${SHIP_SIZE}`;
 const getChickenSprite = (seed) => `https://robohash.org/chicken_${seed}.png?set=set2&size=${CHICKEN_SIZE}x${CHICKEN_SIZE}`;
 const getBossSprite = (lvl) => `https://robohash.org/BOSS_INTRUDER_MK${lvl}.png?set=set1&size=${BOSS_SIZE}x${BOSS_SIZE}`;
@@ -44,7 +41,6 @@ export default function ChickenIntruderGame() {
   const [bgMusic, setBgMusic] = useState(null);
   const [sfxShoot, setSfxShoot] = useState(null);
 
-  // --- 🌌 STAR FIELD ---
   const stars = useMemo(() => {
     return [...Array(60)].map((_, i) => ({
       id: i,
@@ -55,7 +51,6 @@ export default function ChickenIntruderGame() {
     }));
   }, []);
 
-  // --- REFS ---
   const shipPos = useRef({ x: SCREEN_WIDTH/2 - SHIP_SIZE/2, y: SCREEN_HEIGHT - 150 });
   const pBullets = useRef([]);
   const bBullets = useRef([]);
@@ -69,33 +64,13 @@ export default function ChickenIntruderGame() {
   const bossAttackTimer = useRef(0);
   const frameId = useRef(0);
 
-  // --- RENDER STATE ---
   const [renderPBullets, setRenderPBullets] = useState([]);
   const [renderBBullets, setRenderBBullets] = useState([]);
   const [renderChickens, setRenderChickens] = useState([]);
   const [renderPowerUps, setRenderPowerUps] = useState([]);
   const [renderBoss, setRenderBoss] = useState(null);
 
-  // --- 🕹️ CONTROLS ENGINE (The Fix) ---
-  
-  // 1. Mobile Touch Logic (PanResponder stops scrolling)
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => updateShipPosition(evt.nativeEvent.pageX, evt.nativeEvent.pageY),
-      onPanResponderMove: (evt) => updateShipPosition(evt.nativeEvent.pageX, evt.nativeEvent.pageY),
-    })
-  ).current;
-
-  // 2. PC Mouse Logic (Standard MouseMove)
-  const handleMouseMove = (e) => {
-    if (Platform.OS === 'web') {
-      updateShipPosition(e.nativeEvent.pageX, e.nativeEvent.pageY);
-    }
-  };
-
-  // Shared Helper
+  // --- 🕹️ CONTROLS ENGINE ---
   const updateShipPosition = (x, y) => {
     if (gameState === 'PLAYING' || gameState === 'BOSS_FIGHT') {
       shipPos.current = { 
@@ -105,7 +80,24 @@ export default function ChickenIntruderGame() {
     }
   };
 
-  // --- 🎵 AUDIO SETUP ---
+  // Mobile Touch Logic
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => updateShipPosition(evt.nativeEvent.pageX, evt.nativeEvent.pageY),
+      onPanResponderMove: (evt) => updateShipPosition(evt.nativeEvent.pageX, evt.nativeEvent.pageY),
+    })
+  ).current;
+
+  // PC Mouse Logic (Just moving mouse updates ship)
+  const handleMouseMove = (e) => {
+    // Only run this on Web
+    if (Platform.OS === 'web') {
+      updateShipPosition(e.nativeEvent.pageX, e.nativeEvent.pageY);
+    }
+  };
+
   useEffect(() => {
     async function setupAudio() {
       try {
@@ -114,19 +106,14 @@ export default function ChickenIntruderGame() {
           staysActiveInBackground: false,
           shouldDuckAndroid: true,
         });
-
         const { sound: music } = await Audio.Sound.createAsync(
-          { uri: MUSIC_URL },
-          { isLooping: true, volume: 0.5 }
+          { uri: MUSIC_URL }, { isLooping: true, volume: 0.5 }
         );
         setBgMusic(music);
-
         const { sound: laser } = await Audio.Sound.createAsync(
-          { uri: SHOOT_URL },
-          { volume: 0.3 } 
+          { uri: SHOOT_URL }, { volume: 0.3 } 
         );
         setSfxShoot(laser);
-
       } catch (error) { console.log("Audio Error:", error); }
     }
     setupAudio();
@@ -140,7 +127,6 @@ export default function ChickenIntruderGame() {
     try { if (sfxShoot) await sfxShoot.replayAsync(); } catch (e) {}
   };
 
-  // --- GAME LOOP ---
   useEffect(() => {
     const loop = () => {
       if (gameState === 'PLAYING' || gameState === 'BOSS_FIGHT') {
@@ -152,7 +138,6 @@ export default function ChickenIntruderGame() {
     return () => cancelAnimationFrame(frameId.current);
   }, [gameState, level]);
 
-  // --- PHYSICS ---
   const updateGameLogic = () => {
     spawnTimer.current++;
 
@@ -308,6 +293,7 @@ export default function ChickenIntruderGame() {
     shipPos.current = { x: SCREEN_WIDTH/2 - SHIP_SIZE/2, y: SCREEN_HEIGHT - 150 };
   };
 
+  // --- RENDER FUNCTIONS ---
   const renderMainMenu = () => (
     <View style={styles.overlay}>
       <Text style={styles.title}>CHICKEN</Text>
@@ -359,9 +345,8 @@ export default function ChickenIntruderGame() {
   return (
     <View 
       style={styles.container} 
-      // 🖐️ COMBINED CONTROLS
-      {...panResponder.panHandlers}  // Handles Mobile Drag
-      onMouseMove={handleMouseMove} // Handles PC Mouse Movement
+      {...panResponder.panHandlers} 
+      onMouseMove={handleMouseMove} 
     >
       <StatusBar hidden />
       
@@ -422,7 +407,8 @@ export default function ChickenIntruderGame() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000015', overflow: 'hidden' }, 
+  // THE FIX: touchAction: 'none' prevents browser scrolling on Drag
+  container: { flex: 1, backgroundColor: '#000015', overflow: 'hidden', touchAction: 'none' }, 
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   
   title: { fontSize: 50, fontWeight: 'bold', color: '#eceff4', letterSpacing: 2 },
