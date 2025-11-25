@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
-  StyleSheet, Text, View, Dimensions, TouchableOpacity, StatusBar, Image, Modal, PanResponder, Platform 
+  StyleSheet, Text, View, Dimensions, TouchableOpacity, StatusBar, Image, Modal, Platform 
 } from 'react-native';
 import Constants from 'expo-constants';
 import { Audio } from 'expo-av';
 
+// --- 🔧 CONFIGURATION ---
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const SHIP_SIZE = 60;
@@ -14,9 +15,11 @@ const CHICKEN_SIZE = 50;
 const BOSS_SIZE = 140;
 const POWERUP_SIZE = 45;
 
+// --- 🎵 AUDIO URLS ---
 const MUSIC_URL = 'https://codeskulptor-demos.commondatastorage.googleapis.com/GalaxyInvaders/theme_01.mp3';
 const SHOOT_URL = 'https://codeskulptor-demos.commondatastorage.googleapis.com/GalaxyInvaders/bonus.mp3';
 
+// --- 🎨 ASSETS ---
 const getShipSprite = (id) => `https://robohash.org/${id}.png?set=set3&size=${SHIP_SIZE}x${SHIP_SIZE}`;
 const getChickenSprite = (seed) => `https://robohash.org/chicken_${seed}.png?set=set2&size=${CHICKEN_SIZE}x${CHICKEN_SIZE}`;
 const getBossSprite = (lvl) => `https://robohash.org/BOSS_INTRUDER_MK${lvl}.png?set=set1&size=${BOSS_SIZE}x${BOSS_SIZE}`;
@@ -70,34 +73,20 @@ export default function ChickenIntruderGame() {
   const [renderPowerUps, setRenderPowerUps] = useState([]);
   const [renderBoss, setRenderBoss] = useState(null);
 
-  // --- 🕹️ CONTROLS ENGINE ---
-  const updateShipPosition = (x, y) => {
+  // --- 🕹️ CONTROLS ENGINE (The "Deep Search" Fix) ---
+  
+  // This function handles BOTH Mouse (PC) and Touch (Mobile)
+  const handlePointerMove = (e) => {
     if (gameState === 'PLAYING' || gameState === 'BOSS_FIGHT') {
+      // "nativeEvent" contains X/Y for both Mouse and Touch
       shipPos.current = { 
-        x: x - SHIP_SIZE / 2, 
-        y: y - SHIP_SIZE 
+        x: e.nativeEvent.pageX - SHIP_SIZE / 2, 
+        y: e.nativeEvent.pageY - SHIP_SIZE 
       };
     }
   };
 
-  // Mobile Touch Logic
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => updateShipPosition(evt.nativeEvent.pageX, evt.nativeEvent.pageY),
-      onPanResponderMove: (evt) => updateShipPosition(evt.nativeEvent.pageX, evt.nativeEvent.pageY),
-    })
-  ).current;
-
-  // PC Mouse Logic (Just moving mouse updates ship)
-  const handleMouseMove = (e) => {
-    // Only run this on Web
-    if (Platform.OS === 'web') {
-      updateShipPosition(e.nativeEvent.pageX, e.nativeEvent.pageY);
-    }
-  };
-
+  // --- 🎵 AUDIO SETUP ---
   useEffect(() => {
     async function setupAudio() {
       try {
@@ -127,6 +116,7 @@ export default function ChickenIntruderGame() {
     try { if (sfxShoot) await sfxShoot.replayAsync(); } catch (e) {}
   };
 
+  // --- GAME LOOP ---
   useEffect(() => {
     const loop = () => {
       if (gameState === 'PLAYING' || gameState === 'BOSS_FIGHT') {
@@ -293,7 +283,7 @@ export default function ChickenIntruderGame() {
     shipPos.current = { x: SCREEN_WIDTH/2 - SHIP_SIZE/2, y: SCREEN_HEIGHT - 150 };
   };
 
-  // --- RENDER FUNCTIONS ---
+  // --- RENDER ---
   const renderMainMenu = () => (
     <View style={styles.overlay}>
       <Text style={styles.title}>CHICKEN</Text>
@@ -345,8 +335,10 @@ export default function ChickenIntruderGame() {
   return (
     <View 
       style={styles.container} 
-      {...panResponder.panHandlers} 
-      onMouseMove={handleMouseMove} 
+      // 🖐️ THE UNIFIED INPUT FIX:
+      // onPointerMove handles BOTH Mouse Hover and Touch Drag
+      onPointerMove={handlePointerMove}
+      onPointerDown={handlePointerMove} // Jumps ship to finger immediately on tap
     >
       <StatusBar hidden />
       
@@ -407,8 +399,15 @@ export default function ChickenIntruderGame() {
 }
 
 const styles = StyleSheet.create({
-  // THE FIX: touchAction: 'none' prevents browser scrolling on Drag
-  container: { flex: 1, backgroundColor: '#000015', overflow: 'hidden', touchAction: 'none' }, 
+  // THE CSS MAGIC: touchAction 'none' + userSelect 'none'
+  // This tells the browser: "Do not scroll. Do not highlight text. Just let the game handle clicks."
+  container: { 
+    flex: 1, 
+    backgroundColor: '#000015', 
+    overflow: 'hidden',
+    touchAction: 'none', 
+    userSelect: 'none' 
+  },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   
   title: { fontSize: 50, fontWeight: 'bold', color: '#eceff4', letterSpacing: 2 },
